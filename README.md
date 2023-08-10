@@ -1,66 +1,105 @@
-## Foundry
+# Remappings Support for ZkSync
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This repo demonstrates the differences in remappings support beteween the solc solidity compiler and the zksolc compiler.
 
-Foundry consists of:
+## Prerequisite:
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- Must have a version of `solc` installed
+- Must have a version of `zksolc` installed
+- make sure `solc` and `zksolc` executables are accessible
 
-## Documentation
+## Quickstart
 
-https://book.getfoundry.sh/
+- clone this repo and cd into `zksync-remappings-issue`
+- `forge install`
 
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+git clone ...
+cd zksync-remappings-issue
+forge install
 ```
 
-### Test
+`Counter.sol` imports:
 
-```shell
-$ forge test
+```bash
+# actual path: <PROJECT-ROOT>/lib/solmate/src/tokens/ERC20.sol
+import "solmate/tokens/ERC20.sol";
 ```
 
-### Format
+## Compile `Counter.sol` with `solc` and `zksolc` for comparison:
 
-```shell
-$ forge fmt
+## `Solc`
+
+### `solc` without providing remappings:
+
+```bash
+solc src/Counter.sol --output-dir ./remap-output/ --combined-json "bin"
 ```
 
-### Gas Snapshots
+Output:
 
-```shell
-$ forge snapshot
+```bash
+Error: Source "solmate/tokens/ERC20.sol" not found: File not found. Searched the following locations: "".
+ --> src/Counter.sol:4:1:
+  |
+4 | import "solmate/tokens/ERC20.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
-### Anvil
+### `solc` with remappings gives a positive result:
 
-```shell
-$ anvil
+remapping provided: `solmate/=lib/solmate/src/`
+
+```bash
+solc solmate/=lib/solmate/src/ src/Counter.sol --output-dir ./remap-output/ --combined-json "bin" --overwrite
 ```
 
-### Deploy
+Output:
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+```bash
+Compiler run successful. Artifact(s) can be found in directory "./remap-output/".
 ```
 
-### Cast
+## `zkSolc`
 
-```shell
-$ cast <subcommand>
+### `zksolc` without providing remappings:
+
+```bash
+ zksolc-linux-amd64-musl-v1.3.11 src/Counter.sol --combined-json "bin" --output-dir ./remap-output/  --overwrite
 ```
 
-### Help
+Output:
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+```bash
+Error: Source "solmate/tokens/ERC20.sol" not found: File not found. Searched the following locations: "".
+ --> src/Counter.sol:4:1:
+  |
+4 | import "solmate/tokens/ERC20.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
+
+### `zksolc` with remappings:
+
+```bash
+zksolc-linux-amd64-musl-v1.3.11 solmate/=lib/solmate/src/ src/Counter.sol --output-dir out/remap-output
+```
+
+```bash
+No such file or directory (os error 2)
+```
+
+### Sanity check: `zksolc` with `Counter.sol` adjusted imports:
+
+Change `Counter.sol` imports:
+
+```bash
+import "lib/solmate/src/tokens/ERC20.sol";
+```
+
+run zksolc compiler:
+
+```bash
+zksolc-linux-amd64-musl-v1.3.11 src/Counter.sol --combined-json "bin" --output-dir ./remap-output/  --overwrite
+```
+
+Result, Succesful Compilation.
